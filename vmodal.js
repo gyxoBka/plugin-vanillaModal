@@ -1,31 +1,11 @@
 const vModal = function (options) {
     const TRANSITION_DURATION = 300
 
-    let isClosing = false, isDestroyed = false, 
-    isOpened = false, isBodyOverflowed = false
-    let bodyPadding
-
-    const $scrollWidth = _getScrollWidth()
-
-    function _getScrollWidth() {
-        const wrap = document.createElement('div')
-        wrap.style.overflow = 'scroll'
-
-        document.body.appendChild(wrap)
-
-        const wrapped = document.createElement('div')
-        wrapped.style.width = '100%'
-        wrap.appendChild(wrapped)
-
-        const width = wrap.offsetWidth - wrapped.offsetWidth
-
-        document.body.removeChild(wrap);
-
-        return width;
-    }
-
-    const $modal = _createModal(options)
+    let isClosing = false, isDestroyed = false, isOpened = false
+    let overlay, container
     
+    const $modal = _createModal(options)
+
     function _createModal(options) {
         const modal = document.createElement('div')
         modal.classList.add('vmodal')
@@ -46,7 +26,8 @@ const vModal = function (options) {
             </div>
         `)
 
-        const container = modal.querySelector('[data-container]')
+        overlay = modal.querySelector('.vmodal__overlay')
+        container = modal.querySelector('[data-container]')
 
         if(options.width.length !== 0)
             container.style.width = options.width
@@ -108,32 +89,55 @@ const vModal = function (options) {
         }
     }
 
+    function _getScrollBarWidth() {
+        const wrap = document.createElement('div')
+        document.body.appendChild(wrap)
+        const width = window.innerWidth - wrap.offsetWidth
+        document.body.removeChild(wrap);
+
+        return width;
+    }
+
     function _setScrollbar() {
-        bodyPadding = document.body.style.paddingRight || '';
-        isBodyOverflowed = document.body.clientWidth < window.innerWidth;
+        const scrollWidth = _getScrollBarWidth()
 
-        if(isBodyOverflowed) {
-            const basePadding = parseInt(bodyPadding || 0, 10);
+        if(scrollWidth) {
+            document.body.style.paddingRight = scrollWidth + 'px'
+            return scrollWidth
+        } 
 
-            document.body.style.paddingRight = basePadding + $scrollWidth + 'px';
-            document.body.style.overflowY = 'hidden'
+        document.body.style.paddingRight = ''
+
+        return scrollWidth
+    }
+
+    function _resizeOverlay(scrollWidth) {
+        if(window.innerHeight < container.offsetHeight) {
+            overlay.style.width = `calc(100% - ${scrollWidth}px)`
+            return
         }
+
+        overlay.style.width = '100%'
     }
 
     const modal = {
         open() {
-            if(isDestroyed || isOpened) {
+            if(isDestroyed || isOpened || isClosing) {
                 return
             }
 
-            if(!isClosing) {
-                _setScrollbar()
+            isOpened = true
 
-                $modal.classList.add('open')
-                options.transition.type.length && $modal.classList.add(`open-${options.transition.type}`)
-            
-                isOpened = true
-            }
+            const scrollWidth = _setScrollbar()
+
+            $modal.classList.add('open')
+            options.transition.type.length && $modal.classList.add(`open-${options.transition.type}`)
+
+            document.body.style.overflow = 'hidden'
+
+            setTimeout(() => {
+                _resizeOverlay(scrollWidth)
+            }, options.transition.time ?  options.transition.time : TRANSITION_DURATION)
 
             if(typeof options.onOpen === 'function') {
                 options.onOpen()
@@ -142,7 +146,7 @@ const vModal = function (options) {
         close() {
             isClosing = true
             $modal.classList.remove('open')
-            $modal.classList.add('hide')
+            $modal.classList.add('hide') 
 
             if(options.transition.type.length) {
                 $modal.classList.remove(`open-${options.transition.type}`)
@@ -153,8 +157,8 @@ const vModal = function (options) {
                 isClosing = false
                 isOpened = false
 
-                document.body.style.paddingRight = bodyPadding
-                document.body.style.overflowY = 'auto'
+                document.body.style.paddingRight = ''
+                document.body.style.overflow = ''
 
                 $modal.classList.remove('hide')
                 options.transition.type.length  && $modal.classList.remove(`hide-${options.transition.type}`)
@@ -162,6 +166,7 @@ const vModal = function (options) {
                 if(typeof options.onClose === 'function') {
                     options.onClose()
                 }
+
             }, options.transition.time ?  options.transition.time : TRANSITION_DURATION)
         }
     }
@@ -172,6 +177,15 @@ const vModal = function (options) {
         }
     }
 
+    const resizeEvent = e => {
+        if(isOpened) {
+            const scrollWidth = _setScrollbar()
+            _resizeOverlay(scrollWidth)
+        }
+    }
+
+    window.addEventListener('resize', resizeEvent, true);
+
     if(!options.close.isCloseDisabled) {
         $modal.addEventListener('click', closeEvent)
     }
@@ -180,6 +194,7 @@ const vModal = function (options) {
         destroy() {
             $modal.parentNode.removeChild($modal)
             $modal.removeEventListener('click', closeEvent)
+            window.removeEventListener('resize', resizeEvent)
             isDestroyed = true
         },
         setContent(html) {
@@ -201,7 +216,6 @@ const vModal = function (options) {
                 return
             }
 
-            const container = $modal.querySelector('[data-container]')
             transition = transition.trim()
 
             options.transition.type.length && container.classList.remove(`vmodal__container--${options.transition.type}`)
