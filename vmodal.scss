@@ -1,11 +1,12 @@
 .vmodal{
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+
+    padding: 2rem;
 
     width: 100%;
     height: 100%;
-
     position: fixed;
     top: 0;
     left: 0;
@@ -13,6 +14,7 @@
     opacity: 0;
     visibility: hidden;
     overflow-y: auto;
+    overflow-x: hidden;
 
     &.open,
     &.hide {
@@ -69,6 +71,7 @@
 }
 
 .vmodal__overlay{
+    display: block;
     width: 100%;
     height: 100%;
 
@@ -81,23 +84,17 @@
 }
 
 .vmodal__container{
-    display: flex;
-    flex-direction: column;
-
+    display: block;
     width: 600px;
     max-width: 100vw;
 
     padding: 2rem;
-    margin: 0 1rem;
     
-    border-radius: 1rem;
+    border-radius: .5rem;
     background-color: #fff;
     box-shadow: 0 5px 10px rgba(#000, .5);
     transition: transform .3s ease-in-out,
                 opacity .3s ease-in-out;
-
-    overflow-y: auto;
-    overflow-x: hidden;
 
     z-index: 1;
 
